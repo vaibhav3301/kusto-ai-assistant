@@ -36,7 +36,7 @@ execution. You just ask questions.
 ### 1. Clone and Setup
 
 ```bash
-git clone https://github.com/vasingh87/kusto-ai-assistant.git
+git clone https://github.com/vaibhav3301/kusto-ai-assistant.git
 cd kusto-ai-assistant
 python setup.py
 ```
