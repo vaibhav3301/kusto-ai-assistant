@@ -1,0 +1,17 @@
+# Environment
+.env
+venv/
+__pycache__/
+*.pyc
+logs/
+
+# Config with secrets
+config/config.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/mcp.json
+.idea/

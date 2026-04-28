@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "kusto-ai-assistant": {
+      "command": "<PATH_TO_REPO>/venv/Scripts/python.exe",
+      "args": [
+        "<PATH_TO_REPO>/mcp_server.py"
+      ],
+      "env": {
+        "KUSTO_CONFIG_FILE": "<PATH_TO_REPO>/config/config.json"
+      }
+    }
+  }
+}

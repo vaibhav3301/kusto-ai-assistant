@@ -1,0 +1,16 @@
+{
+  "clusters": {
+    "my-cluster": {
+      "url": "${KUSTO_CLUSTER_URL}",
+      "database": "${KUSTO_DATABASE}"
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/kusto-ai-assistant.log"
+  },
+  "settings": {
+    "default_limit": 1000,
+    "timeout_seconds": 300
+  }
+}
