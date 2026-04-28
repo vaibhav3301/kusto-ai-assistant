@@ -1,154 +1,235 @@
 # Kusto AI Assistant
 
-> **Talk to your telemetry.** Ask questions in plain English, get answers from Kusto.
+> **Ask questions about your data in plain English. Get answers instantly.**
 
-Kusto AI Assistant is an MCP (Model Context Protocol) server that connects
-GitHub Copilot in VS Code directly to your Azure Data Explorer (Kusto)
-clusters. No KQL expertise needed - just ask your question and get results.
-
-## The Problem
-
-PMs spend hours writing complex KQL queries to answer simple questions like
-*"How many backup customers do we have?"* or *"What's the failure rate this week?"*
-This requires deep Kusto expertise and knowledge of table schemas.
-
-## The Solution
+No KQL knowledge needed. No coding required. Just ask.
 
 ```
-You:     "Show me ADLS backup failures in the last 7 days by region"
-Copilot: [generates KQL → executes → returns formatted results]
-         "There were 342 failures across 12 regions. UAE North had the most
-          with 65 failures (19%), followed by Central India with 48 (14%)..."
+You:     "How many backup customers do we have this week?"
+Copilot: "There are 3,187 unique subscriptions with active backup jobs
+          across 58 regions. Top regions: Canada Central (847),
+          Australia East (623), UAE North (412)..."
 ```
-
-The LLM handles the translation. The MCP server handles authentication and
-execution. You just ask questions.
 
 ---
 
-## Quick Start (5 minutes)
+## What is this?
 
-### Prerequisites
-- Python 3.10+
-- VS Code with GitHub Copilot
-- Access to a Kusto cluster (or use the free public Samples cluster)
+Kusto AI Assistant connects **GitHub Copilot** (the AI in VS Code) to your
+team's **Kusto telemetry data**. You ask questions in English, and it:
 
-### 1. Clone and Setup
+1. Figures out which table has the data you need
+2. Writes the Kusto query for you
+3. Runs it against your cluster
+4. Gives you the answer in plain English
 
-```bash
+**You never write a single line of KQL.**
+
+---
+
+## What are Skills?
+
+**Skills** are knowledge packs that teach the assistant about your team's
+specific data. Each skill contains:
+
+| File | What it does |
+|------|-------------|
+| `context.md` | Describes your tables, columns, and data patterns so the AI knows how to query them |
+| `sample-questions.md` | Example questions you can ask — great for learning what's possible |
+| `README.md` | Overview of the skill |
+
+### Available Skills
+
+| Skill | For | What you can ask |
+|-------|-----|-----------------|
+| [Azure Backup](skills/azure-backup/) | Backup & BCDR PMs | Customer counts, failure rates, job trends, regional breakdowns |
+| [Azure Storage](skills/azure-storage/) | Storage PMs | Account capacity, transactions, security audit, critical customers |
+
+### Creating Your Own Skill
+
+Any PM can create a skill for their team's data. It's just writing a few
+markdown files - no code:
+
+1. Copy the [`skills/_template/`](skills/_template/) folder
+2. Rename it to your team name (e.g., `skills/my-team/`)
+3. Edit `context.md` — describe your Kusto tables and what the columns mean
+4. Edit `sample-questions.md` — add questions your team commonly asks
+5. Share it with your team!
+
+See the [template README](skills/_template/README.md) for detailed guidance.
+
+---
+
+## Setup Guide (Step by Step)
+
+### What you need before starting
+
+- [x] **VS Code** — [Download here](https://code.visualstudio.com/) if you don't have it
+- [x] **GitHub Copilot** — You should already have this through Microsoft (check Extensions in VS Code)
+- [x] **Python** — [Download Python 3.12+](https://www.python.org/downloads/) → during install, **check "Add to PATH"**
+- [x] **Access to a Kusto cluster** — If you can open your data in Azure Data Explorer web, you have access
+
+### Step 1: Download this project
+
+**Option A — If you have Git:**
+Open a terminal (PowerShell or Command Prompt) and run:
+```
 git clone https://github.com/vaibhav3301/kusto-ai-assistant.git
 cd kusto-ai-assistant
+```
+
+**Option B — If you don't have Git:**
+1. Go to https://github.com/vaibhav3301/kusto-ai-assistant
+2. Click the green **"Code"** button → **"Download ZIP"**
+3. Extract the ZIP to a folder (e.g., `C:\Users\YourName\kusto-ai-assistant`)
+4. Open a terminal and `cd` into that folder
+
+### Step 2: Run the setup
+
+```
 python setup.py
 ```
 
-This creates a virtual environment, installs dependencies, and walks you
-through authentication.
+This will:
+- Create an isolated Python environment (won't affect anything else on your machine)
+- Install the required packages
+- Open a browser window for you to sign in with your Microsoft account
 
-### 2. Configure Your Clusters
+**Sign in with your work account** (the same one you use for Azure/Kusto).
 
-```bash
-# Copy the template
-cp config/config.json.template config/config.json
+### Step 3: Add your Kusto cluster
+
+1. In the project folder, go to `config/`
+2. Copy `config.json.template` and rename the copy to `config.json`
+3. Open `config.json` in any text editor (even Notepad)
+4. Replace the placeholder with your cluster URL:
+
+```json
+{
+  "clusters": {
+    "my-data": {
+      "url": "https://your-cluster.kusto.windows.net/",
+      "database": "YourDatabaseName"
+    }
+  }
+}
 ```
 
-Edit `config/config.json` with your cluster URLs. See
-[`config/sample-clusters.md`](config/sample-clusters.md) for team-specific
-examples.
+**Don't know your cluster URL?** It's the URL in your browser when you open
+Azure Data Explorer. Or ask your engineering team. Or check
+[`config/sample-clusters.md`](config/sample-clusters.md) for common Microsoft
+cluster configs.
 
-Create a `.env` file with your cluster details:
+**Want multiple clusters?** Just add more entries:
+```json
+{
+  "clusters": {
+    "backup-data": {
+      "url": "https://mabprod1.kusto.windows.net/",
+      "database": "MABKustoProd1"
+    },
+    "storage-data": {
+      "url": "https://xstorepm.westcentralus.kusto.windows.net/",
+      "database": "XStorePM"
+    }
+  }
+}
 ```
-KUSTO_CLUSTER_URL=https://your-cluster.kusto.windows.net/
-KUSTO_DATABASE=YourDatabase
-```
 
-### 3. Configure VS Code
+### Step 4: Connect it to VS Code
 
-1. Open VS Code
-2. `Ctrl+Shift+P` → **"MCP: Open User Configuration"**
-3. Add this server (update paths):
+1. Open **VS Code**
+2. Press `Ctrl+Shift+P` (opens the Command Palette)
+3. Type **"MCP"** and select **"MCP: Open User Configuration"**
+4. This opens a JSON file. Add the following (replace the path with where you put the project):
 
 ```json
 {
   "servers": {
     "kusto-ai-assistant": {
-      "command": "C:/path/to/kusto-ai-assistant/venv/Scripts/python.exe",
-      "args": ["C:/path/to/kusto-ai-assistant/mcp_server.py"],
+      "command": "C:\\Users\\YourName\\kusto-ai-assistant\\venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\YourName\\kusto-ai-assistant\\mcp_server.py"
+      ],
       "env": {
-        "KUSTO_CONFIG_FILE": "C:/path/to/kusto-ai-assistant/config/config.json"
+        "KUSTO_CONFIG_FILE": "C:\\Users\\YourName\\kusto-ai-assistant\\config\\config.json"
       }
     }
   }
 }
 ```
 
-4. Click **Start** on the server in MCP settings
-5. Open Copilot Chat → Enable **Agent Mode**
+5. Save the file
+6. You should see a **"Start"** button appear next to the server name — click it
+7. It should show **"Running"** ✓
 
-### 4. Start Asking Questions!
+### Step 5: Load a skill (recommended)
+
+1. Press `Ctrl+Shift+P` → type **"Custom Instructions"** → select **"Copilot: Configure Custom Instructions"**
+2. Add the path to the skill context file for your team:
+   - Backup PMs: `C:\Users\YourName\kusto-ai-assistant\skills\azure-backup\context.md`
+   - Storage PMs: `C:\Users\YourName\kusto-ai-assistant\skills\azure-storage\context.md`
+   - General: `C:\Users\YourName\kusto-ai-assistant\prompts\kusto-context.md`
+
+This teaches Copilot about your specific data, so it writes better queries.
+
+### Step 6: Start asking questions!
+
+1. Open **GitHub Copilot Chat** (click the Copilot icon in the sidebar, or `Ctrl+Shift+I`)
+2. Make sure **Agent Mode** is enabled (toggle at the top of the chat)
+3. Ask away:
 
 ```
 "List all tables in my database"
-"What columns does the AddonAzureBackupJobsDPP table have?"
-"How many unique subscriptions ran backup jobs this week?"
-"Show me the daily failure trend for the last 30 days"
-"Which regions have the most customers?"
+"How many customers are using backup this week?"
+"What's the failure rate trend for the last 30 days?"
+"Show me the top regions by activity"
 ```
 
 ---
 
-## How It Works
+## How it looks in practice
 
-```
-  You (plain English)
-       │
-       ▼
-  GitHub Copilot ◄──── Custom Instructions (KQL patterns)
-       │
-       │ MCP Protocol
-       ▼
-  Kusto AI Assistant (this server)
-       │
-       │ Azure SDK + Your Credentials
-       ▼
-  Azure Data Explorer
-       │
-       ▼
-  Results → Copilot → Plain English Answer
-```
+**You type:**
+> "How many unique subscriptions are using ADLS backup in the last 5 days?"
 
-See [`docs/architecture.md`](docs/architecture.md) for details.
+**Copilot does (behind the scenes):**
+1. Reads the skill context to understand the data
+2. Calls `list_tables` to see what's available
+3. Calls `get_table_schema` on the relevant table
+4. Generates a KQL query with `parse_json(properties)` and `dcount()`
+5. Runs the query via `execute_kql`
+6. Summarizes: *"100 unique subscriptions across 289 vaults in 48 regions,
+   with an 83% success rate"*
+
+**Total time: ~30 seconds** (vs. 15-30 minutes writing KQL manually)
 
 ---
 
-## Available Tools
+## FAQ
 
-| Tool | Description |
-|------|-------------|
-| `execute_kql` | Run any KQL query against a configured cluster |
-| `get_table_schema` | Get column names and types for a table |
-| `list_tables` | List all tables in a database |
+**Q: I don't know KQL. Can I still use this?**
+Yes! That's the whole point. Ask in plain English.
 
----
+**Q: What if it gives me wrong data?**
+Ask it to double-check: *"Are you sure? Show me the query you used."*
+You can also say *"Try a different approach"* or give hints.
 
-## Copilot Custom Instructions (Optional but Recommended)
+**Q: Is my data safe?**
+Yes. Everything runs on your machine. The AI can only access clusters you
+configured with your own credentials.
 
-Load [`prompts/kusto-context.md`](prompts/kusto-context.md) as a custom
-instruction in VS Code to significantly improve query quality:
+**Q: The server won't start. What do I do?**
+Run `python pre_auth.py` again to refresh your authentication. Make sure
+you can access your Kusto cluster in a browser first.
 
-1. `Ctrl+Shift+P` → **"Copilot: Configure Custom Instructions"**
-2. Add the path to `prompts/kusto-context.md`
+**Q: Can I share my skills with my team?**
+Absolutely! That's the point. Create a skill, commit it to the repo, and
+share. Each team member just needs to set up the project once.
 
-This teaches Copilot KQL syntax, best practices, and common PM query patterns.
-
----
-
-## Example Queries by Team
-
-| Team | Examples |
-|------|----------|
-| Azure Backup | [`examples/backup-queries.md`](examples/backup-queries.md) |
-| Azure Storage | [`examples/storage-queries.md`](examples/storage-queries.md) |
-| General | [`examples/general-queries.md`](examples/general-queries.md) |
+**Q: I want to add my team's data. How?**
+Copy `skills/_template/`, fill in your tables and columns, and you're done.
+See the [template guide](skills/_template/README.md).
 
 ---
 
@@ -156,57 +237,44 @@ This teaches Copilot KQL syntax, best practices, and common PM query patterns.
 
 ```
 kusto-ai-assistant/
-├── mcp_server.py              # MCP server (main entry point)
-├── pre_auth.py                # One-time authentication helper
-├── setup.py                   # One-command setup script
-├── requirements.txt           # Python dependencies
+├── mcp_server.py                 # The engine (you don't need to touch this)
+├── pre_auth.py                   # Sign-in helper
+├── setup.py                      # One-command setup
+├── requirements.txt              # Python packages (handled by setup.py)
 ├── config/
-│   ├── config.json.template   # Cluster config template
-│   └── sample-clusters.md     # Team-specific config examples
+│   ├── config.json.template      # Your cluster config (copy and edit)
+│   └── sample-clusters.md        # Example configs for common clusters
+├── skills/                       # ⭐ SKILLS - domain knowledge packs
+│   ├── azure-backup/             # Backup PM skill
+│   │   ├── context.md            #   Table/column descriptions
+│   │   └── sample-questions.md   #   Example questions
+│   ├── azure-storage/            # Storage PM skill
+│   │   ├── context.md
+│   │   └── sample-questions.md
+│   └── _template/                # Copy this to create your own skill
+│       ├── README.md
+│       ├── context.md
+│       └── sample-questions.md
 ├── prompts/
-│   └── kusto-context.md       # Copilot custom instructions for KQL
-├── examples/
-│   ├── backup-queries.md      # NL→KQL examples for Backup PMs
-│   ├── storage-queries.md     # NL→KQL examples for Storage PMs
-│   └── general-queries.md     # Generic KQL patterns
-├── docs/
-│   └── architecture.md        # How MCP works, data flow
-└── .vscode/
-    └── mcp.json.template      # VS Code MCP config template
+│   └── kusto-context.md          # General KQL knowledge (for any team)
+├── examples/                     # Detailed NL→KQL examples
+│   ├── backup-queries.md
+│   ├── storage-queries.md
+│   └── general-queries.md
+└── docs/
+    └── architecture.md           # Technical details (optional reading)
 ```
-
----
-
-## FAQ
-
-**Q: Do I need to know KQL?**
-No. Ask in plain English. Copilot generates the KQL for you.
-
-**Q: Can I use multiple clusters?**
-Yes. Add them all to `config/config.json`. Copilot can query any of them.
-
-**Q: Is my data secure?**
-Yes. Everything runs locally. Auth uses your own AAD credentials. No data
-leaves your machine except the Kusto queries (which run with your permissions).
-
-**Q: What if Copilot generates a bad query?**
-It will see the error and retry. You can also say *"try a different approach"*
-or guide it with hints like *"the status column is inside the properties JSON"*.
-
-**Q: Can I use this outside VS Code?**
-The MCP server works with any MCP-compatible client. VS Code + Copilot is
-the recommended setup for the best experience.
 
 ---
 
 ## Contributing
 
-1. Fork the repo
-2. Add your team's sample queries in `examples/`
-3. Submit a PR
+1. **Create a skill for your team** — Copy `skills/_template/` and fill it in
+2. **Add sample questions** — Help others learn what's possible
+3. **Share this repo** — The more PMs use it, the more skills we build
 
 ---
 
 ## License
 
-MIT - See [LICENSE](LICENSE)
+MIT — See [LICENSE](LICENSE)
