@@ -206,7 +206,59 @@ This teaches Copilot about your specific data, so it writes better queries.
 
 ---
 
-## FAQ
+## Daily Email Reports (Automated)
+
+Get a daily email with your key metrics, analyzed by AI. No manual effort.
+
+### How it works
+
+1. **You define queries** in a simple YAML config file
+2. **The script runs them** against your Kusto clusters
+3. **Azure OpenAI analyzes** the results and writes an executive summary
+4. **You get an email** with the AI summary + data tables
+
+### Quick setup
+
+1. Copy the template config:
+   ```
+   copy reports\_template.yaml reports\my-report.yaml
+   ```
+
+2. Edit `my-report.yaml`:
+   - Add your Kusto queries (the KQL your team uses)
+   - Add your Azure OpenAI endpoint (ask your team for the URL)
+   - Add email recipients
+
+3. Test it:
+   ```
+   python daily_report.py --config reports\my-report.yaml --dry-run
+   ```
+   This generates an HTML file in `reports/` so you can preview it.
+
+4. Run it for real:
+   ```
+   python daily_report.py --config reports\my-report.yaml
+   ```
+
+### Schedule it to run daily (Windows)
+
+1. Open **Task Scheduler** (search in Start menu)
+2. Click **Create Basic Task**
+3. Name: "Kusto Daily Report"
+4. Trigger: **Daily** at your preferred time (e.g., 8:00 AM)
+5. Action: **Start a program**
+   - Program: `C:\Users\YourName\kusto-ai-assistant\venv\Scripts\python.exe`
+   - Arguments: `daily_report.py --config reports\my-report.yaml`
+   - Start in: `C:\Users\YourName\kusto-ai-assistant`
+6. Done!
+
+### What the email looks like
+
+The email has two sections:
+- **Executive Summary** — AI-written analysis with key metrics, trends, and concerns
+- **Data Details** — The actual query results in formatted tables
+
+---
 
 **Q: I don't know KQL. Can I still use this?**
 Yes! That's the whole point. Ask in plain English.
@@ -238,6 +290,7 @@ See the [template guide](skills/_template/README.md).
 ```
 kusto-ai-assistant/
 ├── mcp_server.py                 # The engine (you don't need to touch this)
+├── daily_report.py               # Automated daily email reports
 ├── pre_auth.py                   # Sign-in helper
 ├── setup.py                      # One-command setup
 ├── requirements.txt              # Python packages (handled by setup.py)
@@ -252,15 +305,12 @@ kusto-ai-assistant/
 │   │   ├── context.md
 │   │   └── sample-questions.md
 │   └── _template/                # Copy this to create your own skill
-│       ├── README.md
-│       ├── context.md
-│       └── sample-questions.md
+├── reports/                      # 📧 Daily report configs
+│   ├── daily-backup-report.yaml  #   Pre-built backup health report
+│   └── _template.yaml            #   Copy this for your own report
 ├── prompts/
 │   └── kusto-context.md          # General KQL knowledge (for any team)
 ├── examples/                     # Detailed NL→KQL examples
-│   ├── backup-queries.md
-│   ├── storage-queries.md
-│   └── general-queries.md
 └── docs/
     └── architecture.md           # Technical details (optional reading)
 ```

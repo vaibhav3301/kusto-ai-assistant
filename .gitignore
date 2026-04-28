@@ -8,6 +8,9 @@ logs/
 # Config with secrets
 config/config.json
 
+# Generated reports
+reports/report-*.html
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,0 +1,92 @@
+# Daily Report Configuration
+# Copy this file, rename it, and customize for your team.
+
+report_title: "Azure Backup - Daily Health Report"
+
+# ---------------------------------------------------------------
+# Azure OpenAI (for LLM analysis of query results)
+# ---------------------------------------------------------------
+azure_openai:
+  endpoint: "https://your-aoai-resource.openai.azure.com"
+  deployment: "gpt-4o"                  # Your model deployment name
+  api_version: "2024-08-01-preview"
+  # api_key: "..."                      # Optional: if not using AAD auth
+
+# Custom prompt for the LLM analysis (optional)
+analysis_prompt: |
+  Analyze the backup telemetry data below. Provide:
+  1. Key metrics summary (customers, jobs, success rate)
+  2. Any concerning trends or anomalies
+  3. Top issues requiring attention
+  4. Comparison with typical patterns
+  Keep it concise and actionable for a PM audience.
+
+# ---------------------------------------------------------------
+# Kusto Queries (add as many as you need)
+# ---------------------------------------------------------------
+queries:
+  - name: "Backup Job Summary (Last 24h)"
+    description: "Overall backup health across all workload types"
+    cluster: "https://mabprod1.kusto.windows.net/"
+    database: "MABKustoProd1"
+    kql: |
+      AddonAzureBackupJobsDPP
+      | where TIMESTAMP > ago(1d)
+      | extend props = parse_json(properties)
+      | where tostring(props.JobOperation) == "Backup"
+      | summarize
+          TotalJobs = count(),
+          Succeeded = countif(tostring(props.JobStatus) == "Completed"),
+          Failed = countif(tostring(props.JobStatus) == "Failed"),
+          InProgress = countif(tostring(props.JobStatus) == "InProgress")
+          by DatasourceType = tostring(props.DatasourceType)
+      | extend SuccessRate = round(100.0 * Succeeded / TotalJobs, 1)
+      | order by TotalJobs desc
+
+  - name: "ADLS Backup - Top Customers"
+    description: "Most active ADLS backup subscriptions"
+    cluster: "https://mabprod1.kusto.windows.net/"
+    database: "MABKustoProd1"
+    kql: |
+      AddonAzureBackupJobsDPP
+      | where TIMESTAMP > ago(1d)
+      | extend props = parse_json(properties)
+      | where tostring(props.DatasourceType) == "Microsoft.Storage/storageAccounts/adlsBlobServices"
+      | where tostring(props.JobOperation) == "Backup"
+      | summarize
+          TotalJobs = count(),
+          Succeeded = countif(tostring(props.JobStatus) == "Completed"),
+          Failed = countif(tostring(props.JobStatus) == "Failed")
+          by SubscriptionId = tostring(props.SubscriptionId),
+             VaultName = tostring(props.VaultName),
+             Region = tostring(props.AzureDataCenter)
+      | extend SuccessRate = round(100.0 * Succeeded / TotalJobs, 1)
+      | order by TotalJobs desc
+      | take 20
+
+  - name: "Regional Failure Hotspots"
+    description: "Regions with highest failure rates (potential issues)"
+    cluster: "https://mabprod1.kusto.windows.net/"
+    database: "MABKustoProd1"
+    kql: |
+      AddonAzureBackupJobsDPP
+      | where TIMESTAMP > ago(1d)
+      | extend props = parse_json(properties)
+      | where tostring(props.JobOperation) == "Backup"
+      | summarize
+          TotalJobs = count(),
+          Failed = countif(tostring(props.JobStatus) == "Failed")
+          by Region = tostring(props.AzureDataCenter)
+      | where TotalJobs > 10
+      | extend FailureRate = round(100.0 * Failed / TotalJobs, 1)
+      | where FailureRate > 5
+      | order by FailureRate desc
+
+# ---------------------------------------------------------------
+# Email recipients
+# ---------------------------------------------------------------
+email:
+  to:
+    - "vasin@microsoft.com"
+  cc:
+    - ""  # Add CC recipients here

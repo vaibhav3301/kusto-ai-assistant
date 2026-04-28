@@ -1,0 +1,40 @@
+# Report Configuration Template
+# Copy this file and customize for your team.
+
+report_title: "My Team - Daily Report"
+
+# ---------------------------------------------------------------
+# Azure OpenAI
+# ---------------------------------------------------------------
+azure_openai:
+  endpoint: "https://your-aoai-resource.openai.azure.com"
+  deployment: "gpt-4o"
+  api_version: "2024-08-01-preview"
+
+analysis_prompt: |
+  Analyze the data and provide:
+  1. Key metrics summary
+  2. Trends or anomalies
+  3. Top issues needing attention
+
+# ---------------------------------------------------------------
+# Queries
+# ---------------------------------------------------------------
+queries:
+  - name: "My First Query"
+    description: "What this query measures"
+    cluster: "https://your-cluster.kusto.windows.net/"
+    database: "YourDatabase"
+    kql: |
+      YourTable
+      | where Timestamp > ago(1d)
+      | summarize count() by Category
+      | order by count_ desc
+
+# ---------------------------------------------------------------
+# Email
+# ---------------------------------------------------------------
+email:
+  to:
+    - "you@microsoft.com"
+  cc: []
